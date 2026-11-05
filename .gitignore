@@ -1,0 +1,50 @@
+# Virtual Environments
+backend/.venv/
+.venv/
+env/
+venv/
+ENV/
+
+# Portable Node binaries & node_modules
+node/
+node_modules/
+frontend/node_modules/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Database & temp uploads
+backend/db/*.db
+db/
+*.db
+backend/uploads/
+uploads/
+*.sqlite
+*.sqlite3
+
+# Environment & credentials
+.env
+.env.*
+!.env.example
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
