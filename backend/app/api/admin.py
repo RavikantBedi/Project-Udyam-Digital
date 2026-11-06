@@ -14,7 +14,7 @@ from app.schemas.schemas import (
 from app.security.auth import get_current_user, require_role
 from app.services.admin_service import AdminService
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(tags=["admin"])
 
 
 @router.get("/leads", response_model=list[LeadResp])

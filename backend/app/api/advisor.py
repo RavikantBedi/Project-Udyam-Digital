@@ -22,7 +22,7 @@ from app.schemas.schemas import (
 
 logger = logging.getLogger("accel.advisor")
 
-router = APIRouter(prefix="/advisor", tags=["advisor"])
+router = APIRouter(tags=["advisor"])
 
 # Singleton manager
 _manager: ProviderManager | None = None

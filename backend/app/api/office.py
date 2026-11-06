@@ -14,7 +14,7 @@ from app.schemas.schemas import (
 from app.security.auth import require_role
 from app.services.services import MetricsService, ModelService
 
-router = APIRouter(prefix="/office", tags=["office"])
+router = APIRouter(tags=["office"])
 
 
 @router.get("/leads", response_model=list[LeadResp])

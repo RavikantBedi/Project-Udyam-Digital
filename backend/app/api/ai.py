@@ -19,7 +19,7 @@ from app.security.auth import require_role
 settings = get_settings()
 logger = logging.getLogger("accel.admin.ai")
 
-router = APIRouter(prefix="/admin/ai", tags=["admin-ai"])
+router = APIRouter(tags=["admin-ai"])
 
 # Singleton manager (rebuilt when config changes)
 _manager: ProviderManager | None = None
