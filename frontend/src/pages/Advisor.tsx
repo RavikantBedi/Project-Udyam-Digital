@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Mic, MicOff, Send, CheckCircle2, AlertCircle, ArrowRight, Sparkles, User, Bot, HelpCircle } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 interface Message {
   role: 'bot' | 'user'

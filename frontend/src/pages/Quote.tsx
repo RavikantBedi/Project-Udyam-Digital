@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Check, ShieldCheck, ArrowRight, Zap, Info, Plus, Trash2 } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function Quote() {
   const { i18n } = useTranslation()

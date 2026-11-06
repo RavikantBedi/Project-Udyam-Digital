@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LogIn, UserPlus, Mail, Phone, Lock, Building, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_URL = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function Auth() {
   const { i18n } = useTranslation()
@@ -11,13 +11,45 @@ export default function Auth() {
   const isHi = i18n.language === 'hi'
 
   const [isSignup, setIsSignup] = useState(false)
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [businessName, setBusinessName] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('sales@accelbusiness.in')
+  const [phone, setPhone] = useState('9999999999')
+  const [businessName, setBusinessName] = useState('Sales Executive')
+  const [password, setPassword] = useState('AccelSales2026!')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [autoSignin, setAutoSignin] = useState(false)
+
+  // Auto sign-in with demo credentials on first load so you can access features immediately
+  useEffect(() => {
+    if (!autoSignin) {
+      setAutoSignin(true)
+      ;(async () => {
+        try {
+          setLoading(true)
+          const res = await fetch(`${API_URL}/api/auth/signin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ email: 'sales@accelbusiness.in', password: 'AccelSales2026!' }),
+          })
+          const data = await res.json()
+          if (res.ok && data.access_token) {
+            localStorage.setItem('auth_token', data.access_token)
+            localStorage.setItem('auth_user', JSON.stringify(data.user))
+            setSuccess(isHi ? 'स्वचालित लॉगिन सफल!' : 'Auto sign-in successful!')
+            setTimeout(() => navigate('/advisor'), 800)
+          } else {
+            setError(data.detail || 'Auto sign-in failed — use manual sign in below')
+            setLoading(false)
+          }
+        } catch {
+          setLoading(false)
+          setError(isHi ? 'स्वचालित कनेक्ट नहीं हो सका — नीचे मैनुअल साइन इन का उपयोग करें।' : 'Auto connect failed — use manual sign in below.')
+        }
+      })()
+    }
+  }, [autoSignin, isHi])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
