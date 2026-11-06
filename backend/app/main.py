@@ -10,10 +10,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import admin, advisor, kyc, office, routes
+from app.api import admin, advisor, ai, kyc, office, routes
 from app.api import auth as auth_router
 from app.core.config import get_settings
 from app.core.db import engine, init_db
+from app.llm.manager import ProviderManager
 from app.models import models  # noqa: F401 — register SQLModel tables
 
 settings = get_settings()
@@ -166,6 +167,7 @@ app.include_router(advisor.router, prefix="/api/advisor", tags=["advisor"])
 app.include_router(kyc.router, prefix="/api", tags=["kyc"])
 app.include_router(office.router, prefix="/api/office", tags=["office"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(ai.router, prefix="/api/admin/ai", tags=["admin-ai"])
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +190,21 @@ def root():
 
 @app.get("/health", response_model=dict[str, Any], tags=["meta"])
 def health():
-    return {"status": "ok", "database": "sqlite" if str(engine.url).startswith("sqlite") else "postgres"}
+    db = "sqlite" if str(engine.url).startswith("sqlite") else "postgres"
+    result: dict[str, Any] = {"status": "ok", "database": db}
+    # Add LLM provider health
+    try:
+        manager = ProviderManager()
+        health_results = manager.health_check_all()
+        result["llm"] = {
+            name: {"healthy": r.healthy, "latency_ms": r.latency_ms, "error": r.error, "model": r.model}
+            for name, r in health_results.items()
+        }
+        result["active_provider"] = manager.active_provider
+    except Exception as e:
+        result["llm"] = {"error": str(e)}
+        result["active_provider"] = "offline"
+    return result
 
 
 @app.get("/ready", response_model=dict[str, Any], tags=["meta"])

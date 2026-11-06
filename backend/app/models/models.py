@@ -169,3 +169,20 @@ class AuditLog(SQLModel, table=True):
     before_hash: str | None = None
     after_hash: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class LLMConfig(SQLModel, table=True):
+    """Admin-configured LLM provider settings. Only one row should be active."""
+    id: int | None = Field(default=None, primary_key=True)
+    provider: str = "offline"  # offline | anthropic | openai | ollama
+    base_url: str | None = None
+    model: str = "qwen2.5:7b-instruct"
+    vision_model: str | None = None
+    vision_enabled: bool = False
+    api_key_encrypted: str | None = None  # Fernet-encrypted API key
+    timeout_seconds: int = 60
+    max_retries: int = 2
+    circuit_breaker_threshold: int = 3
+    circuit_breaker_timeout_seconds: int = 60
+    is_active: bool = True
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

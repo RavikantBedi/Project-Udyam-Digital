@@ -12,7 +12,7 @@ from app.models.models import (
     Product,
     User,
 )
-from app.repositories.repositories import (
+from app.repositories import (
     ConsentLedgerRepository,
     GstinRegistryRepository,
     LeadRepository,

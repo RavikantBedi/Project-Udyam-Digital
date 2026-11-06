@@ -461,6 +461,44 @@ class RoleMatrixResp(BaseModel):
     admin: bool
 
 
+# ---------------------------------------------------------------------------
+# AI settings (admin only)
+# ---------------------------------------------------------------------------
+class AIConfigReq(BaseModel):
+    provider: str = Field(pattern="^(offline|anthropic|openai|ollama)$")
+    base_url: str | None = None
+    model: str = "qwen2.5:7b-instruct"
+    vision_model: str | None = None
+    vision_enabled: bool = False
+    api_key: str | None = None  # plaintext, encrypted before storage
+    timeout_seconds: int = Field(60, ge=5, le=300)
+    max_retries: int = Field(2, ge=0, le=10)
+    circuit_breaker_threshold: int = Field(3, ge=1, le=10)
+    circuit_breaker_timeout_seconds: int = Field(60, ge=10, le=3600)
+
+
+class AIConfigResp(BaseModel):
+    provider: str
+    base_url: str | None = None
+    model: str
+    vision_model: str | None = None
+    vision_enabled: bool = False
+    api_key_masked: str  # last 4 chars only
+    timeout_seconds: int
+    max_retries: int
+    circuit_breaker_threshold: int
+    circuit_breaker_timeout_seconds: int
+    is_active: bool
+
+
+class AIHealthResp(BaseModel):
+    provider: str
+    model: str
+    healthy: bool
+    latency_ms: float | None = None
+    error: str | None = None
+
+
 # Fix forward references
 TokenResp.model_rebuild()
 

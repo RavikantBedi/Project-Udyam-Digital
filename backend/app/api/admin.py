@@ -12,7 +12,7 @@ from app.schemas.schemas import (
     LeadResp,
 )
 from app.security.auth import get_current_user, require_role
-from app.services.services import AdminService
+from app.services.admin_service import AdminService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

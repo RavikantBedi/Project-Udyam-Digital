@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_base_url: str = ""
     ollama_base_url: str = Field("http://localhost:11434")
+    llm_model: str = Field("qwen2.5:7b-instruct", description="Default model name")
+    llm_vision_model: str | None = Field(None, description="Vision model name (defaults to llm_model)")
+    llm_vision_enabled: bool = Field(False, description="Enable vision/document extraction via LLM")
+    llm_timeout_seconds: int = Field(60, description="LLM request timeout in seconds")
+    llm_max_retries: int = Field(2, description="Max LLM retries")
+    llm_circuit_breaker_threshold: int = Field(3, description="Circuit breaker failure threshold")
+    llm_circuit_breaker_timeout_seconds: int = Field(60, description="Circuit breaker recovery timeout (seconds)")
 
     @field_validator("jwt_secret")
     @classmethod

@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from app.core.config import get_settings
 from app.core.db import get_session
-from app.repositories.repositories import OtpCodeRepository
+from app.repositories import OtpCodeRepository
 from app.schemas.schemas import (
     ChangePasswordReq,
     ForgotPasswordReq,
@@ -33,7 +33,8 @@ from app.security.auth import (
     tokens_for_user,
     verify_csrf_token,
 )
-from app.services.services import AdminService, AuthService
+from app.services.admin_service import AdminService
+from app.services.services import AuthService
 
 settings = get_settings()
 
