@@ -34,7 +34,7 @@ from app.security.auth import (
     verify_csrf_token,
 )
 from app.services.admin_service import AdminService
-from app.services.services import AuthService
+from app.services.auth_service import AuthService
 
 settings = get_settings()
 

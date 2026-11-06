@@ -1,7 +1,7 @@
 """Pydantic request/response schemas for all API endpoints."""
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # ---------------------------------------------------------------------------
@@ -50,6 +50,8 @@ class UserResponse(BaseModel):
     phone_verified: bool = False
     is_active: bool = True
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---------------------------------------------------------------------------

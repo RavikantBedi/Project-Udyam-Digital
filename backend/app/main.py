@@ -189,13 +189,13 @@ def root():
 
 
 @app.get("/health", response_model=dict[str, Any], tags=["meta"])
-def health():
+async def health():
     db = "sqlite" if str(engine.url).startswith("sqlite") else "postgres"
     result: dict[str, Any] = {"status": "ok", "database": db}
     # Add LLM provider health
     try:
         manager = ProviderManager()
-        health_results = manager.health_check_all()
+        health_results = await manager.health_check_all()
         result["llm"] = {
             name: {"healthy": r.healthy, "latency_ms": r.latency_ms, "error": r.error, "model": r.model}
             for name, r in health_results.items()
