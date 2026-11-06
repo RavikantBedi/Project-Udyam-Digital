@@ -1,12 +1,15 @@
-from typing import Dict, List, Any, Tuple
-from sqlmodel import Session, select
-from app.models.models import Product
 from datetime import datetime
-import os
+from typing import Any
 
-DEMO_TODAY = datetime(2026, 7, 15)
+from sqlmodel import Session, select
 
-SEGMENT_TEMPLATES: Dict[str, List[str]] = {
+from app.core.config import get_settings
+from app.models.models import Product
+
+_settings = get_settings()
+DEMO_TODAY = datetime.strptime(_settings.demo_today, "%Y-%m-%d")
+
+SEGMENT_TEMPLATES: dict[str, list[str]] = {
     "Micro retail & services": ["P04", "P07", "P19"],
     "Professional offices": ["P02", "P16", "P07", "P20", "P17"],
     "Small multi-site businesses": ["P01", "P09", "P08", "P23", "P19"],
@@ -20,11 +23,11 @@ GSTIN_REQUIRED_PRODUCTS = {"P03", "P05", "P06", "P10", "P12", "P13", "P14", "P15
 class RulesEngine:
     def __init__(self, session: Session):
         self.session = session
-        self.products: Dict[str, Product] = {
+        self.products: dict[str, Product] = {
             p.product_id: p for p in session.exec(select(Product)).all()
         }
 
-    def infer_segment(self, profile: Dict[str, Any]) -> str:
+    def infer_segment(self, profile: dict[str, Any]) -> str:
         btype = (profile.get("business_type") or "").lower()
         num_sites = int(profile.get("num_sites") or 1)
         if any(x in btype for x in ["clinic", "doctor", "ca", "chartered", "coaching", "law", "office", "consult", "advocate"]):
@@ -35,7 +38,7 @@ class RulesEngine:
             return "Small multi-site businesses"
         return "Micro retail & services"
 
-    def is_eligible(self, pid: str, profile: Dict[str, Any], bundle_ids: List[str]) -> Tuple[bool, str]:
+    def is_eligible(self, pid: str, profile: dict[str, Any], bundle_ids: list[str]) -> tuple[bool, str]:
         p = self.products.get(pid)
         if not p:
             return False, "Unknown product"
@@ -73,7 +76,7 @@ class RulesEngine:
 
         return True, ""
 
-    def recommend_bundle(self, profile: Dict[str, Any]) -> Dict[str, Any]:
+    def recommend_bundle(self, profile: dict[str, Any]) -> dict[str, Any]:
         segment = self.infer_segment(profile)
         template = SEGMENT_TEMPLATES.get(segment, SEGMENT_TEMPLATES["Micro retail & services"]).copy()
         bundle_ids = template.copy()
@@ -160,7 +163,7 @@ class RulesEngine:
         }
         return names.get(segment, "Accel Business Bundle")
 
-    def price_bundle(self, bundle_ids: List[str], contract_months: int = 24) -> Dict[str, Any]:
+    def price_bundle(self, bundle_ids: list[str], contract_months: int = 24) -> dict[str, Any]:
         """
         Deterministic pricing:
         price = price_max - (price_max - price_min) * f

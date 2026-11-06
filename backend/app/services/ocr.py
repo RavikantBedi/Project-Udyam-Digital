@@ -1,13 +1,51 @@
 import os
 import re
 from datetime import datetime
-from typing import Dict, Any, List, Optional
-from PIL import Image, ImageFilter
-import numpy as np
-import pandas as pd
-from app.core.config import get_data_dir, get_settings
+from typing import Any
 
-DEMO_TODAY = datetime(2026, 7, 15)
+import numpy as np
+from PIL import Image, ImageFilter
+
+from app.core.config import get_settings
+
+GSTIN_MULTIPLIER = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]
+GSTIN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def validate_gstin_checksum(gstin: str) -> bool:
+    """Validate GSTIN using the standard checksum algorithm. Accept X as the 4th PAN char."""
+    if len(gstin) != 15:
+        return False
+    gstin = gstin.upper()
+    total = 0
+    for i, ch in enumerate(gstin[:-1]):
+        if ch not in GSTIN_CHARS:
+            if i == 5 and ch == "X":
+                val = GSTIN_CHARS.index("X")
+            else:
+                return False
+        else:
+            val = GSTIN_CHARS.index(ch)
+        v = val * GSTIN_MULTIPLIER[i]
+        total += (v // 36) + (v % 36)
+    check = (36 - (total % 36)) % 36
+    return GSTIN_CHARS[check] == gstin[-1]
+
+
+def validate_udyam_format(number: str) -> bool:
+    """Validate UDYAM-XX-00-NNNNNNN format with district code 00."""
+    return bool(re.match(r"^UDYAM-[A-Z]{2}-00-\d{7}$", number.strip().upper()))
+
+
+def mask_gstin(gstin: str) -> str:
+    if len(gstin) >= 10:
+        return gstin[:4] + "•" * (len(gstin) - 7) + gstin[-3:]
+    return "••••••••••••••"
+
+
+def get_demo_today() -> datetime:
+    """Return DEMO_TODAY from settings only."""
+    return datetime.strptime(get_settings().demo_today, "%Y-%m-%d")
 
 # Specimen applicant catalogue
 SPECIMEN_PROFILES = {
@@ -158,7 +196,7 @@ SPECIMEN_PROFILES = {
 }
 
 
-def check_image_blur(image_path: str) -> Dict[str, Any]:
+def check_image_blur(image_path: str) -> dict[str, Any]:
     """Detect if an image is blurred using edge variance (Laplacian proxy)."""
     try:
         im = Image.open(image_path).convert("L")
@@ -187,7 +225,7 @@ def extract_text_from_image(image_path: str) -> str:
         return ""
 
 
-def analyze_document(image_path: str, doc_type_hint: Optional[str] = None) -> Dict[str, Any]:
+def analyze_document(image_path: str, doc_type_hint: str | None = None) -> dict[str, Any]:
     """
     Extract fields and validate quality of an uploaded KYC document image.
     Supports real uploads as well as synthetic specimens K01-K12.
@@ -213,7 +251,7 @@ def analyze_document(image_path: str, doc_type_hint: Optional[str] = None) -> Di
     elif "address" in base_name.lower() or "bill" in base_name.lower():
         detected_type = "address_proof"
 
-    fields: Dict[str, Any] = {}
+    fields: dict[str, Any] = {}
     profile = SPECIMEN_PROFILES.get(applicant_id) if applicant_id else None
 
     if quality.get("is_blurred"):

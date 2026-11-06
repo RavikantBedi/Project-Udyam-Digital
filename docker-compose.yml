@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: accel
+      POSTGRES_PASSWORD: accel
+      POSTGRES_DB: accel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accel -d accel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build: ./backend
     ports:
@@ -6,10 +22,14 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/data
-      - ./backend/db:/app/db
       - ./backend/uploads:/app/uploads
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://accel:accel@postgres:5432/accel
+    depends_on:
+      postgres:
+        condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -22,3 +42,6 @@ services:
     environment:
       - VITE_API_URL=http://localhost:8000
     command: npm run dev -- --host
+
+volumes:
+  postgres_data:

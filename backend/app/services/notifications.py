@@ -1,13 +1,15 @@
+"""Omnichannel notifications — Email, SMS, WhatsApp with dev-mode logging."""
 import smtplib
-from email.mime.text import MIMEText
+from datetime import UTC, datetime
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
-from typing import Optional
+from email.mime.text import MIMEText
+
+import httpx
 from sqlmodel import Session
+
 from app.core.config import get_settings
 from app.core.db import engine
 from app.models.models import NotificationLog
-import httpx
 
 settings = get_settings()
 
@@ -19,7 +21,13 @@ def safe_print(text: str):
         print(text.encode("ascii", "replace").decode("ascii"))
 
 
-def log_notification(channel: str, recipient: str, message: str, subject: str = "", order_id: Optional[str] = None):
+def log_notification(
+    channel: str,
+    recipient: str,
+    message: str,
+    subject: str = "",
+    order_id: str | None = None,
+):
     try:
         with Session(engine) as session:
             log = NotificationLog(
@@ -29,7 +37,7 @@ def log_notification(channel: str, recipient: str, message: str, subject: str = 
                 message=message,
                 status="delivered",
                 order_id=order_id,
-                created_at=datetime.utcnow()
+                created_at=datetime.now(UTC),
             )
             session.add(log)
             session.commit()
@@ -37,7 +45,7 @@ def log_notification(channel: str, recipient: str, message: str, subject: str = 
         safe_print(f"[NotificationLog] Error saving notification: {e}")
 
 
-def send_email(to_email: str, subject: str, body: str, order_id: Optional[str] = None) -> bool:
+def send_email(to_email: str, subject: str, body: str, order_id: str | None = None) -> bool:
     """Send real email via SMTP if configured, otherwise log and deliver to notification center."""
     sent = False
     if settings.smtp_host and settings.smtp_user and settings.smtp_password:
@@ -64,7 +72,7 @@ def send_email(to_email: str, subject: str, body: str, order_id: Optional[str] =
     return sent
 
 
-def send_sms(phone: str, message: str, order_id: Optional[str] = None) -> bool:
+def send_sms(phone: str, message: str, order_id: str | None = None) -> bool:
     """Send real SMS via Twilio/Fast2SMS if configured, otherwise deliver to notification center."""
     sent = False
     if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_sms_from:
@@ -73,9 +81,14 @@ def send_sms(phone: str, message: str, order_id: Optional[str] = None) -> bool:
             data = {
                 "From": settings.twilio_sms_from,
                 "To": phone if phone.startswith("+") else f"+91{phone}",
-                "Body": message
+                "Body": message,
             }
-            res = httpx.post(url, data=data, auth=(settings.twilio_account_sid, settings.twilio_auth_token), timeout=5)
+            res = httpx.post(
+                url,
+                data=data,
+                auth=(settings.twilio_account_sid, settings.twilio_auth_token),
+                timeout=5,
+            )
             if res.status_code in (200, 201):
                 sent = True
                 safe_print(f"[SMS] Twilio SMS dispatched to {phone}")
@@ -89,8 +102,8 @@ def send_sms(phone: str, message: str, order_id: Optional[str] = None) -> bool:
     return sent
 
 
-def send_whatsapp(phone: str, message: str, order_id: Optional[str] = None) -> bool:
-    """Send real WhatsApp message via Twilio or Meta Cloud API if configured, otherwise deliver to live feed."""
+def send_whatsapp(phone: str, message: str, order_id: str | None = None) -> bool:
+    """Send real WhatsApp message via Twilio if configured, otherwise deliver to live feed."""
     sent = False
     if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_whatsapp_from:
         try:
@@ -105,9 +118,14 @@ def send_whatsapp(phone: str, message: str, order_id: Optional[str] = None) -> b
             data = {
                 "From": from_wa,
                 "To": to_wa,
-                "Body": message
+                "Body": message,
             }
-            res = httpx.post(url, data=data, auth=(settings.twilio_account_sid, settings.twilio_auth_token), timeout=5)
+            res = httpx.post(
+                url,
+                data=data,
+                auth=(settings.twilio_account_sid, settings.twilio_auth_token),
+                timeout=5,
+            )
             if res.status_code in (200, 201):
                 sent = True
                 safe_print(f"[WhatsApp] Twilio WhatsApp sent to {phone}")
@@ -121,6 +139,22 @@ def send_whatsapp(phone: str, message: str, order_id: Optional[str] = None) -> b
     return sent
 
 
+def send_otp(target: str, code: str, channel: str = "sms") -> bool:
+    """Send an OTP code via the configured channel (dev mode logs it clearly)."""
+    message = f"Your Accel Business verification code is: {code}\nValid for {settings.otp_expire_minutes} minutes.\nDo not share this code."
+    if settings.app_env == "dev" or settings.otp_dev_mode:
+        safe_print(f"[OTP DEV MODE] Channel={channel} Target={target} Code={code}")
+        log_notification(channel, target, message, subject="OTP (dev mode)")
+        return True
+    if channel == "email":
+        return send_email(target, "Your Accel Business Verification Code", message)
+    if channel == "sms":
+        return send_sms(target, message)
+    if channel == "whatsapp":
+        return send_whatsapp(target, message)
+    return False
+
+
 def notify_user_step(event_type: str, user_email: str, user_phone: str, order_id: str = "", details: dict = None):
     """Notify user across Email, SMS and WhatsApp for lifecycle events."""
     details = details or {}
@@ -128,7 +162,7 @@ def notify_user_step(event_type: str, user_email: str, user_phone: str, order_id
     order_num = order_id or "ORD-PENDING"
 
     if event_type == "signin":
-        now_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
+        now_str = datetime.now(UTC).strftime("%d %b %Y, %I:%M %p")
         sub = f"Security Alert: Sign-in to Accel Business ({bname})"
         body = f"""
         <div style="font-family: Arial, sans-serif; padding: 15px; border: 1px solid #e5e7eb; border-radius: 8px;">

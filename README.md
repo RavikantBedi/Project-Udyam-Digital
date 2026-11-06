@@ -6,30 +6,33 @@ A production-grade, mobile-first SMB telecom/IT onboarding platform: **AI Adviso
 
 ---
 
-## Quick Start
+## ?? Quick Start
 
-```
+```bash
+# Docker (recommended — includes PostgreSQL)
 docker compose up
 # ? Backend:  http://localhost:8000 (OpenAPI docs at /docs)
 # ? Frontend: http://localhost:5173
-# ? Back-office: http://localhost:5173/office (demo: sales/demo | partner/demo)
+# ? Back-office: http://localhost:5173/office
 
+# Local development
 cd backend  && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 cd frontend && npm run dev
 ```
 
-Seed + tests:
-```
-cd backend && python -m scripts.seed && python -m pytest tests/ -v
+### Seed database · Run tests
+```bash
+cd backend  && python -m scripts.seed
+python -m pytest tests/ -v          # 47 tests passing
 ```
 
 ---
 
-## Business case (numbers from the provided dataset)
+## ?? Business case (numbers from the provided dataset)
 
 | Metric | Baseline | Target |
 | --- | --- | --- |
-| Lead to activation | 7.4% (5,000 ? 368) | ? 12% blended (15%+ digital) |
+| Lead ? activation | 7.4% (5,000 ? 368) | ? 12% blended (15%+ digital) |
 | Time to activate | 17.6 days | ? 5 days (? 15 min digital steps) |
 | Acquisition cost | ?15,000 per activation | ? ?8,000 blended |
 | Status-chase calls | 3 per customer | ? 1 |
@@ -39,96 +42,109 @@ Biggest funnel leak: needs-assessed ? quote-accepted drops at 44%. The advisor +
 
 ---
 
-## Architecture
+## ??? Production architecture
 
 ```
 OWNER (PWA, 390px mobile-first)
-   Language picker (10 langs) · Voice input (Web Speech API) · Offline mode
+   Language picker (10 langs) · Voice input (Web Speech API — planned) · Offline mode
         ? HTTPS
         ?
 FRONTEND — React 18 + Vite + TypeScript
    Pages: Landing, Advisor, Quote, KYC, Tracker, Office, Auth
-   State: Zustand/sessionStorage · TanStack Query · shadcn/ui · Framer Motion
+   State: (Zustand store — planned) · TanStack Query · shadcn/ui (partial) · Framer Motion
    Inter / Noto Sans Devanagari · ? Indian formatting · WCAG AA
-        ? REST (TanStack Query)
+        ? REST (TanStack Query) + httpOnly cookies
         ?
-BACKEND — FastAPI · SQLModel · SQLite
-   Auth Service — JWT (HS256) signup/signin + welcome alerts
-   Advisor Service — LLM tool-calling + deterministic offline slot-fallback
-   Rules Engine — eligibility, bundling, monotonic pricing (never invents prices)
-   Bundle & Quote — deterministic GST 18%, first-bill estimate, savings
-   KYC / Order — consent-ledger, registry lookup, tracker
-   KYC Service — consent-ledger, registry-lookup, OCR/blur, field extraction,
-                 validation checklist (K01-K12), e-sign OTP (simulated)
-   Back-office — propensity-ranked lead queue, assign-to-partner/field (commission tag),
+BACKEND — FastAPI · SQLModel · PostgreSQL (dev: SQLite override)
+   Auth Service — Argon2id passwords · JWT access (15m) + rotating refresh (7d) · httpOnly cookies
+   Advisor Service — deterministic slot-filling (LLM integration planned)
+   Rules Engine — eligibility · bundling · monotonic pricing (never invents prices)
+   Bundle & Quote — deterministic GST 18% · first-bill estimate · savings
+   KYC / Order — consent-ledger · registry lookup · tracker
+   KYC Service — consent-ledger · registry-lookup · OCR/blur · field extraction
+                 validation checklist (K01-K12) · e-sign OTP (simulated)
+   Back-office — propensity-graded lead queue · assign-to-partner/field (commission tag)
                  GradientBoostingClassifier, AUC logged, proxy features excluded
-   Notifications Service — Email/SMTP, SMS/Twilio, WhatsApp/Meta — Live Notification Center
-   Document Store — encrypted-at-rest, auto-deletion job
+   Notifications Service — Email/SMTP · SMS/Twilio · WhatsApp/Meta — Live Notification Center
+   Document Store — (encryption at rest + auto-deletion job planned)
         ?
-DATA LAYER — SQLite seeded (25 products, 500 demo leads, consent/notification logs)
-   Mock registries: 3,534 GSTIN, 2,723 Udyam, 47 KYC specimen images (K01-K12)
+DATA LAYER — PostgreSQL (prod) / SQLite (tests)
+   Alembic migrations · GSTIN registry (3,534) · Udyam registry (2,723) · 47 KYC specimen images
    ML: propensity.pkl (joblib)
 ```
 
-**Trust boundary:** LLM only ever sees redacted business profile data. Prices/eligibility come exclusively from the rules engine.
+**Trust boundary:** the LLM only ever sees redacted business profile data — no GSTIN, Udyam, phone or IDs cross the LLM boundary. Prices/eligibility come exclusively from the rules engine.
 
 ---
 
-## Feature checklist
+## ?? Feature checklist (honest status)
 
 | # | Feature | Status |
 | --- | --- | --- |
 | 1 | Language picker (10 languages) + landing | ? |
-| 2 | AI Advisor (max 6 questions, adaptive) + live bundle card + voice input | ? |
-| 3 | Quote & checkout (contract toggle, add-ons, GST 18%, first bill, bundle saving) | ? |
-| 4 | Smart KYC (DPDP consent-ledger ? registry lookup ? OCR ? validation ? e-sign) | ? |
-| 5 | Order Tracker (timeline + ETAs + WhatsApp-style live feed) | ? |
-| 6 | Back-office (propensity-graded lead queue, assign-to-partner/field, 5-metric panel + funnel) | ? |
-| 7 | Real-time messaging (live notification feed + omnichannel Email/SMS/WhatsApp) | ? |
-| 8 | Deterministic rules engine (eligibility, dependencies, monotonic pricing) | ? |
+| 2 | AI Advisor (max 6 questions, adaptive) + live bundle card | ? (deterministic, offline mode) |
+| 3 | Voice input (Web Speech API) | ?? Planned — not yet implemented |
+| 4 | Quote & checkout (contract toggle, add-ons, GST 18%, first bill, saving) | ? |
+| 5 | Smart KYC (DPDP consent-ledger ? registry lookup ? OCR ? validation ? e-sign) | ? |
+| 6 | Order Tracker (timeline + ETAs + WhatsApp-style live feed) | ? |
+| 7 | Real-time messaging (live notification feed + omnichannel Email/SMS/WhatsApp) | ? (simulated in dev mode) |
+| 8 | Deterministic rules engine (eligibility · dependencies · monotonic pricing) | ? |
+| 9 | Real authentication (Argon2id, JWT access/refresh, httpOnly cookies, CSRF) | ? |
+| 10 | Role-based access control (owner/sales/partner/admin) | ? |
+| 11 | Back-office lead queue with propensity scoring | ? |
+| 12 | Lead assignment persistence + audit log | ? |
+| 13 | PII masking by role | ? |
+| 14 | Real-time OTP verification (Twilio Verify or dev provider) | ? |
 
 ---
 
-## Tech stack
+## ??? Tech stack
 
 | Layer | Technologies |
 | --- | --- |
-| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, TanStack Query, react-i18next, Lucide icons |
-| Backend | Python 3.11, FastAPI, Pydantic v2, SQLModel, SQLite, Alembic |
-| AI | Anthropic Claude (tool-calling) with deterministic offline fallback (slot-filling + quick replies); Tesseract OCR fallback |
+| Frontend | React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui (partial), Framer Motion, TanStack Query, react-i18next, Lucide icons |
+| Backend | Python 3.11, FastAPI, Pydantic v2, SQLModel, PostgreSQL/SQLite, Alembic |
+| AI | Anthropic Claude (tool-calling — planned) with deterministic offline fallback; Tesseract OCR fallback |
 | ML | scikit-learn GradientBoostingClassifier, joblib |
-| Infra | Docker, docker-compose |
-| Quality | pytest, ESLint, TSC typecheck |
+| Security | Argon2id, python-jose, passlib, CSRF double-submit, httpOnly cookies |
+| Infra | Docker, docker-compose, PostgreSQL |
+| Quality | ruff, pytest, GitHub Actions workflow |
 
 ---
 
-## Repository layout
+## ?? Repository layout
 
 ```
 .
 ??? backend/
 ?   ??? app/
-?   ?   ??? api/         # FastAPI routers: auth, advisor, kyc, routes, office
+?   ?   ??? api/         # FastAPI routers: auth, advisor, kyc, routes, office, admin
 ?   ?   ??? core/        # config, db
-?   ?   ??? models/      # SQLModel DB models: Product, Lead, Order, User, ConsentLedger, NotificationLog
+?   ?   ??? models/      # SQLModel DB models (User, Order, Lead, ConsentLedger, RefreshToken, OtpCode, ...)
 ?   ?   ??? rules/       # Deterministic rules engine + pricing
-?   ?   ??? services/    # OCR engine, omnichannel notifications
+?   ?   ??? repositories/# All direct DB access (repositories)
+?   ?   ??? services/    # Business logic use-cases (AuthService, AdminService, KYCService, OrderService, ...)
+?   ?   ??? security/    # Argon2id, JWT, CSRF, current-user dependency
 ?   ?   ??? scripts/     # Data seeding
+?   ?   ??? llm/         # LLM provider interface (planned)
+?   ??? alembic/         # Database migrations
 ?   ??? tests/           # 47 pytest cases (eligibility, pricing, validators, leakage)
 ?   ??? data/            # product_catalogue.csv, smb_leads.csv, registries, kyc_documents (47 images)
 ??? frontend/
 ?   ??? src/
 ?       ??? pages/       # Landing, Advisor, Quote, KYC, Tracker, Office, Auth
-?       ??? components/  # shadcn/ui primitives (Button, Card, Chip, Stepper, PriceRow...)
+?       ??? components/  # shadcn/ui primitives (partial)
 ?       ??? i18n/        # en / hi full string translations
-?       ??? store/       # Zustand app state (persisted to sessionStorage)
-??? docs/                # ARCHITECTURE.md, DATA_FINDINGS.md, PRIVACY_NOTE.md, METRICS.md, DEMO_SCRIPT.md, DECISIONS.md
+?       ??? store/       # Zustand store (planned)
+??? docs/                # ARCHITECTURE.md · DATA_FINDINGS.md · PRIVACY_NOTE.md · METRICS.md · DEMO_SCRIPT.md · DECISIONS.md
+??? .github/workflows/   # CI: lint, test, frontend build
 ??? docker-compose.yml
+??? README.md
 ```
 
 ---
 
-## Technical approach — 4 design decisions
+## Technical approach — key decisions
 
 **1. Deterministic core, LLM at the edges.** Prices, eligibility, dependencies and totals come only from the pure-Python rules engine; the LLM extracts a structured business profile and explains results. No hallucinated prices, no ineligible products.
 
@@ -137,6 +153,8 @@ DATA LAYER — SQLite seeded (25 products, 500 demo leads, consent/notification lo
 **3. Lookup-first, consent-ledger KYC.** Owner enters GSTIN ? system auto-fills legal name, trade name, constitution, address, status from the registry. Raw document images deleted within 30 days; extracted fields retained for the contract term; marketing consent is an *unbundled* toggle. Every consent is append-logged with timestamp, purpose, version, language and hash.
 
 **4. Assisted-digital handoff, no channel conflict.** Advisor-unclosed leads flow to the back-office queue ranked by a gradient-boosted propensity model (trained on historical smb_leads.csv with AUC logged). Assign-to-partner closes carry a `partner-assisted digital` attribution tag so partner commissions are preserved. Language and state are excluded from the propensity features (documented proxy-discrimination safeguard).
+
+**5. Defense-in-depth security.** Argon2id password hashing, JWT access (15 min) + rotating refresh (7 day) tokens stored hashed, httpOnly/Secure/SameSite cookies, CSRF double-submit protection, rate limiting, account lockout, PII masking by role, immutable audit log.
 
 ---
 
@@ -158,7 +176,9 @@ Returns confidence scores, raw_text for audit, and a blur_score per document.
 
 ## Live notifications (app/services/notifications.py)
 
-Omnichannel delivery: **Email (SMTP), SMS (Twilio/Fast2SMS), WhatsApp (Meta/Twilio)**. Configured credentials send real messages; otherwise every notification lands in the **Live Notification Center** and is persisted in the `notification_log` table (channel, recipient, subject, message, status, order_id, created_at) — so the tracker feed is always populated even without carrier credentials. Lifecycle events (signup, signin, quote_accepted, kyc_verified, installation_scheduled, activated) dispatch email + SMS + WhatsApp in one call.
+Omnichannel delivery: **Email (SMTP), SMS (Twilio/Fast2SMS), WhatsApp (Meta/Twilio)**. Configured credentials send real messages; otherwise every notification lands in the **Live Notification Center** and is persisted in the `notification_log` table — so the tracker feed is always populated even without carrier credentials. Lifecycle events (signup, signin, quote_accepted, kyc_verified, installation_scheduled, activated) dispatch email + SMS + WhatsApp in one call.
+
+**Simulated in dev mode:** DigiLocker pull, real e-sign OTP, real WhatsApp/SMS/Email are simulated; production would add on-prem OCR, real DigiLocker/e-sign integration, a DPO and grievance process.
 
 ---
 
@@ -168,32 +188,50 @@ Omnichannel delivery: **Email (SMTP), SMS (Twilio/Fast2SMS), WhatsApp (Meta/Twil
 Auth & user
   POST /api/auth/signup       ? token + live welcome (email/sms/whatsapp)
   POST /api/auth/signin       ? token + security alert
+  POST /api/auth/refresh      ? rotate access + refresh tokens
+  POST /api/auth/signout      ? revoke current refresh token
+  POST /api/auth/signout-all  ? revoke all refresh tokens for user
+  GET  /api/auth/me           ? current user profile
+  POST /api/auth/change-password
+  POST /api/auth/forgot-password   ? reset OTP via email
+  POST /api/auth/reset-password
+  POST /api/auth/otp/send     ? send OTP (dev mode logs code)
+  POST /api/auth/otp/verify   ? verify OTP
   GET  /api/notifications/live  ? real-time omnichannel feed
 
-Advisor (deterministic fallback when no LLM key)
+Admin (roles: admin/sales/partner)
+  GET  /api/admin/users           ? list users (admin only)
+  POST /api/admin/users           ? create user (admin only)
+  PATCH /api/admin/users/{id}/role ? update user role (admin only)
+  GET  /api/admin/leads           ? role-scoped lead list
+  POST /api/admin/leads/{id}/assign ? assign lead (admin/sales)
+  PATCH /api/admin/assignments/{id}/outcome ? update outcome
+  GET  /api/admin/audit-log       ? immutable audit log (admin only)
+  GET  /api/admin/roles/matrix    ? role × endpoint access matrix
+
+Advisor (rate-limited, anonymous allowed)
   POST /api/advisor/message   ? conversational slot-filling ? profile ? bundle
   POST /api/bundle/recommend  ? rules-engine recommendation + pricing
-  POST /api/quote             ? deterministic per-line price, GST 18%, first-bill
 
 KYC & order
   POST /api/consent           ? DPDP consent-ledger entry
-  GET  /api/lookup/gstin/{gstin}     ? 15-char format + checksum + registry lookup (masked)
-  GET  /api/lookup/udyam/{number}    ? UDYAM-XX-00-NNNNNNN format + registry lookup
+  GET  /api/lookup/gstin/{gstin}     ? format + checksum + registry lookup (masked)
+  GET  /api/lookup/udyam/{number}    ? format + registry lookup
   POST /api/kyc/upload        ? file ? upload dir, OCR queued
   POST /api/kyc/validate      ? checklist: GSTIN/registry/status/Udyam/address-age/name-consistency
   POST /api/esign/otp         ? simulated e-sign OTP (demo: 123456)
   POST /api/esign/verify      ? verify OTP ? signed_at
-  POST /api/orders            ? create order
-  GET  /api/orders/{id}/track ? timeline + ETA + live notification feed
+  POST /api/orders            ? create order (owner only)
+  GET  /api/orders/{id}/track ? timeline + ETA + live notification feed (owner only)
   POST /api/orders/{id}/reschedule
   POST /api/demo/advance-time ? dev control for full-lifecycle demo
 
-Back-office
-  GET  /api/office/leads           ? propensity-ranked queue (Sales/Partner view)
-  POST /api/office/leads/{id}/assign  ? field / partner with commission tag
-  GET  /api/office/metrics         ? 5 metrics: baseline vs target + funnel data
-  POST /api/office/model/retrain   ? retrain GradientBoosting on smb_leads.csv, AUC + samples
+Catalogue
   GET  /api/catalogue              ? 25 products
+
+Meta
+  GET  /health                     ? service health
+  GET  /ready                      ? readiness probe (DB connectivity)
 ```
 
 ---
@@ -205,11 +243,12 @@ Back-office
 | tests/test_rules.py | Eligibility (tiers, employees, sites, GSTIN, requires_one_of), segment inference, pricing determinism & monotonicity, GSTIN checksum, Udyam format, GSTIN masking, leakage guard | 26 passing |
 | tests/test_advisor_scenarios.py | 15 scenarios: Hindi/Hinglish, no-GSTIN micro, 1-site clinic, 4-site chain, manufacturer, mobile-only, ineligible P03 in Tier 2, price objection, change of mind, ask-for-human, vague answers, dependency requests | passing |
 | tests/test_kyc.py | All 12 KYC specimens K01-K12 vs planted defects; blur detection K04; registry match K01 (cancelled) | passing |
-| Frontend | TypeScript strict, ESLint, Vite build | build passes |
+| Ruff lint | All app/ source files | clean |
+| Mypy | Basic type checking | partial |
 
-```
+```bash
 cd backend && python -m pytest tests/ -v
-cd frontend && npm run build
+cd backend && python -m ruff check app/
 ```
 
 ---
